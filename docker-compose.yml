@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  fluid-ai:
+    build: .
+    container_name: fluid-ai-agent
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - GROQ_TEMPERATURE=0.7
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped

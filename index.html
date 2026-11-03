@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid AI — Enterprise Autonomous Document Agent</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- API Key Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card border border-surface-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+        <div class="flex items-center space-x-2.5">
+          <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Groq API Key</h3>
+            <p class="text-xs text-slate-400">Powering Llama 3.3 70B inference</p>
+          </div>
+        </div>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Your current key has expired. Obtain a free API key at 
+          <a href="https://console.groq.com/keys" target="_blank" class="text-sky-400 underline hover:text-sky-300">console.groq.com/keys</a> 
+          and paste it below:
+        </p>
+
+        <div class="space-y-1">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">New API Key (starts with gsk_)</label>
+          <input 
+            type="password" 
+            id="groqKeyInput" 
+            placeholder="gsk_..." 
+            class="w-full bg-surface-subtle border border-surface-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+          />
+        </div>
+
+        <div id="apiKeyMessage" class="hidden text-xs p-2.5 rounded-lg"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2">
+          <button onclick="closeApiKeyModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
+            Cancel
+          </button>
+          <button onclick="saveApiKey()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
+            Save & Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+            },
+            surface: {
+              DEFAULT: '#0B0F19',
+              subtle: '#111827',
+              card: '#161F30',
+              border: '#1F293D',
+              hover: '#243047',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #080C14;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 90% 90%, rgba(20, 184, 166, 0.08), transparent);
+    }
+
+    /* Custom smooth scrollbars */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    @keyframes gradient-border {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .pulse-glow {
+      box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.4);
+    }
+  </style>
+</head>
+
+<body class="min-h-full flex flex-col text-slate-100 font-sans antialiased selection:bg-indigo-500 selection:text-white">
+  
+  <!-- Enterprise Navigation Bar -->
+  <header class="sticky top-0 z-50 border-b border-surface-border bg-surface/80 backdrop-blur-xl transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand & Capabilities -->
+      <div class="flex items-center space-x-3.5">
+        <div class="relative w-10 h-10 flex items-center justify-center">
+          <svg class="w-10 h-10 drop-shadow-[0_0_12px_rgba(99,102,241,0.5)]" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="fluidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#38BDF8" />
+                <stop offset="50%" stop-color="#6366F1" />
+                <stop offset="100%" stop-color="#EC4899" />
+              </linearGradient>
+            </defs>
+            <!-- Hexagon base with cyber aesthetic -->
+            <rect width="44" height="44" rx="12" fill="#0f172a" stroke="url(#fluidGradient)" stroke-width="1.8" />
+            <!-- Fluid Vortex / Dynamic Waveform -->
+            <path d="M12 26C14 20 19 14 26 14C31 14 33 17 31 21C29 25 24 28 20 28C16 28 15 25 17 22" 
+                  stroke="url(#fluidGradient)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="27" cy="18" r="2.2" fill="#38BDF8" />
+            <circle cx="16" cy="25" r="1.8" fill="#EC4899" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-sky-300 via-indigo-300 to-pink-300 bg-clip-text text-transparent">Fluid AI</span>
+            <span class="text-[9.5px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              Autonomous
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium">Research Plan & Proposal Synthesis Engine</p>
+        </div>
+      </div>
+
+      <!-- Live Connectivity & Documentation -->
+      <div class="flex items-center space-x-3">
+        <button onclick="openApiKeyModal()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition">
+          <i data-lucide="key" class="w-3.5 h-3.5"></i>
+          <span>Update Groq API Key</span>
+        </button>
+
+        <a href="/docs" target="_blank" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-surface-subtle hover:bg-surface-border border border-surface-border transition">
+          <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+          <span>Swagger API</span>
+        </a>
+        
+        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-medium">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="tracking-wide">Online</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Column: Generator Studio (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Input Panel -->
+        <div class="bg-surface-card border border-surface-border rounded-2xl p-6 shadow-xl relative overflow-hidden backdrop-blur-md">
+          <div class="absolute -right-16 -top-16 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2.5">
+              <div class="p-2 bg-indigo-500/10 rounded-lg text-indigo-400 border border-indigo-500/20">
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-white">Document Generation Studio</h2>
+                <p class="text-xs text-slate-400">Describe any business proposal, project plan, technical spec, or report.</p>
+              </div>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400 bg-surface-subtle px-2.5 py-1 rounded-md border border-surface-border">
+              Llama 3.3 70B
+            </span>
+          </div>
+
+          <!-- Prompt Box -->
+          <div class="space-y-3">
+            <div class="relative">
+              <textarea 
+                id="promptInput" 
+                rows="5"
+                placeholder="E.g., Create a detailed cloud migration and modernization strategy for a fintech platform, including cost projection, security posture, phased timeline, and risk matrix..."
+                class="w-full bg-surface-subtle border border-surface-border rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition resize-none leading-relaxed"
+              ></textarea>
+              <div class="absolute bottom-2.5 right-3 text-[11px] text-slate-500 font-mono" id="charCount">
+                0 / 5000
+              </div>
+            </div>
+
+            <!-- Preset Quick Prompts -->
+            <div>
+              <div class="text-xs font-medium text-slate-400 mb-2 flex items-center space-x-1.5">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                <span>Quick Blueprints:</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="setPrompt('Create a project plan for developing a mobile app for a local restaurant, covering UI/UX design, technical stack, payment gateway, and rollout schedule.')" 
+                  class="text-xs px-3 py-1.5 bg-surface-subtle hover:bg-surface-hover border border-surface-border hover:border-slate-600 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+                  <i data-lucide="smartphone" class="w-3.5 h-3.5 text-sky-400"></i>
+                  <span>Mobile App Plan</span>
+                </button>
+                <button onclick="setPrompt('Draft an executive market analysis report on AI-powered enterprise workflow automation for 2026, with competitive landscape, SWOT analysis, and ROI estimates.')" 
+                  class="text-xs px-3 py-1.5 bg-surface-subtle hover:bg-surface-hover border border-surface-border hover:border-slate-600 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+                  <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span>AI Market Report</span>
+                </button>
+                <button onclick="setPrompt('Prepare an incident post-mortem and disaster recovery review for an unexpected payment gateway outage with root cause analysis and corrective actions.')" 
+                  class="text-xs px-3 py-1.5 bg-surface-subtle hover:bg-surface-hover border border-surface-border hover:border-slate-600 rounded-lg text-slate-300 hover:text-white transition flex items-center space-x-1.5">
+                  <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i>
+                  <span>Incident Briefing</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-2">
+              <button 
+                id="submitBtn" 
+                onclick="executeAutonomousPipeline()" 
+                class="w-full py-3.5 px-6 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-500 hover:to-sky-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition duration-200 transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                <span id="btnText">Execute Autonomous Agent Pipeline</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Agent Pipeline Tracker (Shown during & after run) -->
+        <div id="pipelineTracker" class="hidden bg-surface-card border border-surface-border rounded-2xl p-6 shadow-xl space-y-5 transition-all">
+          <div class="flex items-center justify-between border-b border-surface-border/60 pb-3">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></div>
+              <h3 class="text-sm font-semibold text-white tracking-wide" id="pipelineStatusTitle">Orchestrating Agent Pipeline</h3>
+            </div>
+            <div class="flex items-center space-x-2 text-xs font-mono text-slate-400 bg-surface-subtle px-2.5 py-1 rounded-md border border-surface-border">
+              <i data-lucide="timer" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span id="pipelineTimer">0.0s</span>
+            </div>
+          </div>
+
+          <!-- 4 Stages Progress Bar -->
+          <div class="grid grid-cols-4 gap-2">
+            <div id="stage-1" class="p-2.5 rounded-xl border border-surface-border bg-surface-subtle/50 text-center transition-all duration-300">
+              <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Stage 1</div>
+              <div class="text-xs font-medium text-slate-400 flex items-center justify-center space-x-1">
+                <span>Planning</span>
+              </div>
+            </div>
+            <div id="stage-2" class="p-2.5 rounded-xl border border-surface-border bg-surface-subtle/50 text-center transition-all duration-300">
+              <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Stage 2</div>
+              <div class="text-xs font-medium text-slate-400 flex items-center justify-center space-x-1">
+                <span>Execution</span>
+              </div>
+            </div>
+            <div id="stage-3" class="p-2.5 rounded-xl border border-surface-border bg-surface-subtle/50 text-center transition-all duration-300">
+              <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Stage 3</div>
+              <div class="text-xs font-medium text-slate-400 flex items-center justify-center space-x-1">
+                <span>Reflection</span>
+              </div>
+            </div>
+            <div id="stage-4" class="p-2.5 rounded-xl border border-surface-border bg-surface-subtle/50 text-center transition-all duration-300">
+              <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500 mb-1">Stage 4</div>
+              <div class="text-xs font-medium text-slate-400 flex items-center justify-center space-x-1">
+                <span>Word & PDF</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-400 italic" id="pipelineLiveLog">Initiating agent decompose workflow...</p>
+        </div>
+
+        <!-- Output & Generated Result Card -->
+        <div id="resultCard" class="hidden bg-surface-card border border-surface-border rounded-2xl p-6 shadow-2xl space-y-6">
+          
+          <!-- Document Header & Download Actions -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-border pb-5">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Generated Successfully
+                </span>
+                <span class="text-xs text-slate-400 font-mono" id="docTypeBadge">Business Proposal</span>
+              </div>
+              <h3 class="text-lg font-bold text-white mt-1" id="resultDocTitle">Document Title</h3>
+            </div>
+
+            <!-- Download Buttons (DOCX + PDF) -->
+            <div class="flex items-center gap-2">
+              <!-- DOCX Download Button -->
+              <a id="btnDownloadDocx" href="#" download class="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 transition shadow-sm">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                <span>Word (.docx)</span>
+              </a>
+
+              <!-- PDF Download Button -->
+              <a id="btnDownloadPdf" href="#" download class="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition shadow-sm">
+                <i data-lucide="file-check" class="w-4 h-4"></i>
+                <span>PDF (.pdf)</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Quality & Performance Metrics -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="bg-surface-subtle p-3.5 rounded-xl border border-surface-border text-center">
+              <div class="text-xs text-slate-400 mb-0.5 font-medium">Quality Score</div>
+              <div class="text-lg font-extrabold text-teal-400 font-mono" id="metricScore">--/10</div>
+            </div>
+            <div class="bg-surface-subtle p-3.5 rounded-xl border border-surface-border text-center">
+              <div class="text-xs text-slate-400 mb-0.5 font-medium">Completed Steps</div>
+              <div class="text-lg font-extrabold text-indigo-400 font-mono" id="metricSteps">--</div>
+            </div>
+            <div class="bg-surface-subtle p-3.5 rounded-xl border border-surface-border text-center">
+              <div class="text-xs text-slate-400 mb-0.5 font-medium">Generation Time</div>
+              <div class="text-lg font-extrabold text-sky-400 font-mono" id="metricElapsed">--s</div>
+            </div>
+          </div>
+
+          <!-- Tabbed Inspector -->
+          <div>
+            <div class="flex border-b border-surface-border space-x-6 text-xs font-medium">
+              <button onclick="inspectTab('summary')" id="tabBtn-summary" class="pb-2.5 text-indigo-400 border-b-2 border-indigo-400 transition">
+                Executive Summary
+              </button>
+              <button onclick="inspectTab('steps')" id="tabBtn-steps" class="pb-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition">
+                Plan & Step Breakdown
+              </button>
+              <button onclick="inspectTab('critique')" id="tabBtn-critique" class="pb-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition">
+                Self-Reflection & Critique
+              </button>
+            </div>
+
+            <div class="mt-4">
+              <!-- Summary Tab -->
+              <div id="tabContent-summary" class="text-xs text-slate-300 leading-relaxed font-sans bg-surface-subtle p-4 rounded-xl border border-surface-border max-h-64 overflow-y-auto">
+                No summary generated.
+              </div>
+
+              <!-- Steps Tab -->
+              <div id="tabContent-steps" class="hidden text-xs text-slate-300 leading-relaxed font-mono bg-surface-subtle p-4 rounded-xl border border-surface-border max-h-64 overflow-y-auto space-y-3">
+                No step breakdown available.
+              </div>
+
+              <!-- Critique Tab -->
+              <div id="tabContent-critique" class="hidden text-xs text-slate-300 leading-relaxed font-sans bg-surface-subtle p-4 rounded-xl border border-surface-border max-h-64 overflow-y-auto space-y-2">
+                No critique available.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right Column: Document Library & History (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <div class="bg-surface-card border border-surface-border rounded-2xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+            <div class="flex items-center space-x-2.5">
+              <div class="p-2 bg-sky-500/10 rounded-lg text-sky-400 border border-sky-500/20">
+                <i data-lucide="folder-git-2" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-white">Generated Library</h2>
+                <p class="text-xs text-slate-400">Available in Word (.docx) & PDF (.pdf)</p>
+              </div>
+            </div>
+
+            <button onclick="loadDocumentLibrary()" class="p-2 rounded-lg bg-surface-subtle hover:bg-surface-hover text-slate-400 hover:text-white border border-surface-border transition" title="Refresh library">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Documents List -->
+          <div id="docLibraryList" class="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+            <!-- Dynamic Items -->
+            <div class="text-center py-8 text-xs text-slate-500">
+              <i data-lucide="loader-2" class="w-5 h-5 mx-auto animate-spin mb-2 text-indigo-400"></i>
+              Loading documents...
+            </div>
+          </div>
+        </div>
+
+        <!-- Capability Card -->
+        <div class="bg-gradient-to-br from-indigo-950/40 via-surface-card to-slate-900 border border-indigo-500/20 rounded-2xl p-5 shadow-lg space-y-3">
+          <div class="flex items-center space-x-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+            <i data-lucide="cpu" class="w-4 h-4"></i>
+            <span>Architecture Guarantee</span>
+          </div>
+          <div class="text-xs text-slate-300 space-y-1.5">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-teal-400"></i>
+              <span>Decomposed Multi-step Planning (Llama 3.3 70B)</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-teal-400"></i>
+              <span>Context passing across individual step executions</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-teal-400"></i>
+              <span>Automated quality reflection with score threshold</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-teal-400"></i>
+              <span>Direct dual compilation to .DOCX and high-res .PDF</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- API Key Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card border border-surface-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+        <div class="flex items-center space-x-2.5">
+          <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
+            <i data-lucide="key" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Groq API Key</h3>
+            <p class="text-xs text-slate-400">Powering Llama 3.3 70B inference</p>
+          </div>
+        </div>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Your current key has expired. Obtain a free API key at 
+          <a href="https://console.groq.com/keys" target="_blank" class="text-sky-400 underline hover:text-sky-300">console.groq.com/keys</a> 
+          and paste it below:
+        </p>
+
+        <div class="space-y-1">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">New API Key (starts with gsk_)</label>
+          <input 
+            type="password" 
+            id="groqKeyInput" 
+            placeholder="gsk_..." 
+            class="w-full bg-surface-subtle border border-surface-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+          />
+        </div>
+
+        <div id="apiKeyMessage" class="hidden text-xs p-2.5 rounded-lg"></div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2">
+          <button onclick="closeApiKeyModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
+            Cancel
+          </button>
+          <button onclick="saveApiKey()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
+            Save & Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize icons
+    lucide.createIcons();
+
+    function openApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.getElementById('apiKeyMessage').classList.add('hidden');
+    }
+
+    async function saveApiKey() {
+      const key = document.getElementById('groqKeyInput').value.trim();
+      const msg = document.getElementById('apiKeyMessage');
+      if (!key) {
+        msg.className = "text-xs p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400";
+        msg.innerText = "Please paste a valid key starting with gsk_";
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/update-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: key })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Failed to update key");
+
+        msg.className = "text-xs p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400";
+        msg.innerText = "API Key successfully updated! You can now generate documents.";
+        msg.classList.remove('hidden');
+        setTimeout(() => {
+          closeApiKeyModal();
+        }, 1500);
+      } catch (e) {
+        msg.className = "text-xs p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400";
+        msg.innerText = e.message;
+        msg.classList.remove('hidden');
+      }
+    }
+
+    let timerInterval = null;
+    let elapsedSeconds = 0;
+
+    // Character counter
+    const promptInput = document.getElementById('promptInput');
+    const charCount = document.getElementById('charCount');
+    promptInput.addEventListener('input', () => {
+      charCount.innerText = `${promptInput.value.length} / 5000`;
+    });
+
+    function setPrompt(text) {
+      promptInput.value = text;
+      charCount.innerText = `${text.length} / 5000`;
+    }
+
+    function inspectTab(activeTab) {
+      const tabs = ['summary', 'steps', 'critique'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tabBtn-${t}`);
+        const content = document.getElementById(`tabContent-${t}`);
+        if (t === activeTab) {
+          btn.className = "pb-2.5 text-indigo-400 border-b-2 border-indigo-400 transition font-medium";
+          content.classList.remove('hidden');
+        } else {
+          btn.className = "pb-2.5 text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition";
+          content.classList.add('hidden');
+        }
+      });
+    }
+
+    function setStage(stageNum, state) {
+      const el = document.getElementById(`stage-${stageNum}`);
+      if (!el) return;
+      if (state === 'active') {
+        el.className = 'p-2.5 rounded-xl border border-indigo-500 bg-indigo-500/10 text-center transition-all duration-300 shadow-md shadow-indigo-500/20';
+        el.querySelector('div:last-child').className = 'text-xs font-semibold text-indigo-300 flex items-center justify-center space-x-1';
+      } else if (state === 'done') {
+        el.className = 'p-2.5 rounded-xl border border-teal-500/40 bg-teal-500/10 text-center transition-all duration-300';
+        el.querySelector('div:last-child').className = 'text-xs font-semibold text-teal-400 flex items-center justify-center space-x-1';
+      } else {
+        el.className = 'p-2.5 rounded-xl border border-surface-border bg-surface-subtle/50 text-center transition-all duration-300';
+        el.querySelector('div:last-child').className = 'text-xs font-medium text-slate-500 flex items-center justify-center space-x-1';
+      }
+    }
+
+    async function loadDocumentLibrary() {
+      const container = document.getElementById('docLibraryList');
+      try {
+        const res = await fetch('/documents');
+        if (!res.ok) throw new Error('Failed to retrieve document repository');
+        const data = await res.json();
+
+        if (!data.documents || data.documents.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-10 text-xs text-slate-500 border border-dashed border-surface-border rounded-xl p-6">
+              <i data-lucide="file-question" class="w-6 h-6 mx-auto mb-2 text-slate-600"></i>
+              No documents created yet. Launch your first prompt to compile a document!
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        container.innerHTML = data.documents.map(doc => {
+          const date = new Date(doc.created * 1000).toLocaleDateString(undefined, {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+          const sizeKb = (doc.size_bytes / 1024).toFixed(0);
+
+          return `
+            <div class="p-3.5 rounded-xl bg-surface-subtle border border-surface-border hover:border-slate-600 transition flex items-center justify-between group">
+              <div class="min-w-0 pr-3">
+                <div class="text-xs font-semibold text-slate-200 truncate group-hover:text-white transition">
+                  ${doc.title || doc.filename}
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-2 font-mono">
+                  <span>${date}</span>
+                  <span>•</span>
+                  <span>${sizeKb} KB</span>
+                </div>
+              </div>
+              <div class="flex items-center space-x-1.5 shrink-0">
+                <a href="${doc.download_url}" download title="Download Word Document" class="p-2 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 transition">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                </a>
+                <a href="${doc.pdf_url}" download title="Download PDF Document" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition">
+                  <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
+                </a>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      } catch (err) {
+        container.innerHTML = `
+          <div class="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+            Failed to refresh repository: ${err.message}
+          </div>
+        `;
+      }
+    }
+
+    async function executeAutonomousPipeline() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) {
+        alert('Please enter a description of the document to generate.');
+        return;
+      }
+
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const tracker = document.getElementById('pipelineTracker');
+      const resultCard = document.getElementById('resultCard');
+      const timerEl = document.getElementById('pipelineTimer');
+      const logEl = document.getElementById('pipelineLiveLog');
+
+      submitBtn.disabled = true;
+      btnText.innerText = "Agent In Progress...";
+      tracker.classList.remove('hidden');
+      resultCard.classList.add('hidden');
+
+      [1, 2, 3, 4].forEach(n => setStage(n, 'idle'));
+      setStage(1, 'active');
+      logEl.innerText = "Stage 1: Decomposing request and structuring workflow steps...";
+
+      elapsedSeconds = 0;
+      timerEl.innerText = '0.0s';
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        elapsedSeconds += 0.5;
+        timerEl.innerText = `${elapsedSeconds.toFixed(1)}s`;
+
+        if (elapsedSeconds > 4 && elapsedSeconds <= 14) {
+          setStage(1, 'done');
+          setStage(2, 'active');
+          logEl.innerText = "Stage 2: Executing steps with LLM context propagation...";
+        } else if (elapsedSeconds > 14 && elapsedSeconds <= 22) {
+          setStage(2, 'done');
+          setStage(3, 'active');
+          logEl.innerText = "Stage 3: Running autonomous reflection & quality review...";
+        } else if (elapsedSeconds > 22) {
+          setStage(3, 'done');
+          setStage(4, 'active');
+          logEl.innerText = "Stage 4: Compiling styled .DOCX and rendering .PDF document...";
+        }
+      }, 500);
+
+      try {
+        const response = await fetch('/agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request: prompt })
+        });
+
+        clearInterval(timerInterval);
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.detail || `Server status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Mark all done
+        [1, 2, 3, 4].forEach(n => setStage(n, 'done'));
+        logEl.innerText = "Completed: Document and PDF successfully compiled!";
+
+        // Update Result UI
+        document.getElementById('resultDocTitle').innerText = data.execution_plan?.document_title || "Generated Document";
+        document.getElementById('docTypeBadge').innerText = (data.execution_plan?.document_type || "document").replace("_", " ").toUpperCase();
+        
+        // Downloads
+        document.getElementById('btnDownloadDocx').href = data.document_download_url;
+        document.getElementById('btnDownloadPdf').href = data.pdf_download_url || data.document_download_url.replace('.docx', '.pdf');
+
+        // Metrics
+        document.getElementById('metricScore').innerText = `${data.reflection?.quality_score || 0}/10`;
+        const completed = data.step_results?.filter(s => s.status === 'completed').length || 0;
+        document.getElementById('metricSteps').innerText = `${completed} / ${data.step_results?.length || 0}`;
+        document.getElementById('metricElapsed').innerText = `${elapsedSeconds.toFixed(1)}s`;
+
+        // Inspector Content
+        document.getElementById('tabContent-summary').innerText = data.summary || "Summary generated.";
+
+        let stepsText = `EXECUTION PLAN:\nTitle: ${data.execution_plan?.document_title}\nType: ${data.execution_plan?.document_type}\n\n`;
+        data.step_results?.forEach(s => {
+          stepsText += `[STEP ${s.step_number}] ${s.step_title} (${s.step_type})\n`;
+          stepsText += `Status: ${s.status.toUpperCase()} | Retries: ${s.retries_used}\n`;
+          stepsText += `${s.content ? s.content.slice(0, 300) + '...' : 'No content'}\n\n`;
+        });
+        document.getElementById('tabContent-steps').innerText = stepsText;
+
+        let critiqueText = `Quality Score: ${data.reflection?.quality_score}/10\n`;
+        critiqueText += `Refinement Performed: ${data.reflection?.refinement_needed ? 'Yes' : 'No'}\n\n`;
+        critiqueText += `Completeness: ${data.reflection?.completeness || 'Comprehensive'}\n`;
+        critiqueText += `Coherence: ${data.reflection?.coherence || 'Logical'}\n\n`;
+        critiqueText += `Critique:\n${data.reflection?.critique || 'Reviewed by reflector.'}\n`;
+        if (data.reflection?.improvements?.length) {
+          critiqueText += `\nImprovement Suggestions:\n• ${data.reflection.improvements.join('\n• ')}`;
+        }
+        document.getElementById('tabContent-critique').innerText = critiqueText;
+
+        resultCard.classList.remove('hidden');
+        loadDocumentLibrary();
+        lucide.createIcons();
+
+      } catch (err) {
+        clearInterval(timerInterval);
+        logEl.innerText = `Error: ${err.message}`;
+        alert(`Failed to complete agent execution: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        btnText.innerText = "Execute Autonomous Agent Pipeline";
+      }
+    }
+
+    // Initial library load
+    loadDocumentLibrary();
+  </script>
+</body>
+</html>
