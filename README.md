@@ -131,8 +131,3 @@ Execute the test suite:
 ```bash
 pytest test_agent.py -v
 ```
-
----
-
-## 📜 License
-MIT License. Built for autonomous research planning and business proposals.

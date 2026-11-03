@@ -37,15 +37,16 @@ class LLMClient:
     - Detailed logging for debugging
     """
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or GROQ_API_KEY
+    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None):
+        import os
+        self.api_key = api_key or os.getenv("GROQ_API_KEY", GROQ_API_KEY)
         if not self.api_key:
             raise ValueError(
                 "GROQ_API_KEY is not set. Get a free key at https://console.groq.com "
-                "and set it in your .env file."
+                "and set it in your .env file or UI."
             )
         self.client = Groq(api_key=self.api_key)
-        self.model = GROQ_MODEL
+        self.model = model or os.getenv("GROQ_MODEL", GROQ_MODEL)
         self.temperature = GROQ_TEMPERATURE
         self.max_tokens = GROQ_MAX_TOKENS
 

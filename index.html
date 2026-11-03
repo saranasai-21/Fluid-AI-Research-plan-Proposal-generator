@@ -16,33 +16,31 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- API Key Modal -->
+  <!-- Settings & Model Modal -->
   <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-surface-card border border-surface-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-surface-border">
         <div class="flex items-center space-x-2.5">
           <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
-            <i data-lucide="key" class="w-4 h-4"></i>
+            <i data-lucide="sliders" class="w-4 h-4"></i>
           </div>
           <div>
-            <h3 class="text-sm font-semibold text-white">Groq API Key</h3>
-            <p class="text-xs text-slate-400">Powering Llama 3.3 70B inference</p>
+            <h3 class="text-sm font-semibold text-white">Groq Configuration</h3>
+            <p class="text-xs text-slate-400">API Key & Default LLM Model</p>
           </div>
         </div>
-        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white p-1">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
       <div class="space-y-3">
         <p class="text-xs text-slate-300 leading-relaxed">
-          Your current key has expired. Obtain a free API key at 
-          <a href="https://console.groq.com/keys" target="_blank" class="text-sky-400 underline hover:text-sky-300">console.groq.com/keys</a> 
-          and paste it below:
+          Configure your Groq API credentials and choose your preferred model:
         </p>
 
         <div class="space-y-1">
-          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">New API Key (starts with gsk_)</label>
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Groq API Key</label>
           <input 
             type="password" 
             id="groqKeyInput" 
@@ -51,13 +49,27 @@
           />
         </div>
 
+        <div class="space-y-1">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">LLM Model</label>
+          <select 
+            id="modalModelSelector"
+            class="w-full bg-surface-subtle border border-surface-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono cursor-pointer"
+          >
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Recommended)</option>
+            <option value="llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra Fast)</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B 32k Context</option>
+            <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+          </select>
+        </div>
+
         <div id="apiKeyMessage" class="hidden text-xs p-2.5 rounded-lg"></div>
 
         <div class="flex items-center justify-end space-x-2 pt-2">
-          <button onclick="closeApiKeyModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
+          <button onclick="closeConfigModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
             Cancel
           </button>
-          <button onclick="saveApiKey()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
+          <button onclick="saveConfig()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
             Save & Apply
           </button>
         </div>
@@ -169,9 +181,9 @@
 
       <!-- Live Connectivity & Documentation -->
       <div class="flex items-center space-x-3">
-        <button onclick="openApiKeyModal()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition">
-          <i data-lucide="key" class="w-3.5 h-3.5"></i>
-          <span>Update Groq API Key</span>
+        <button onclick="openConfigModal()" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition">
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+          <span>Settings & Model</span>
         </button>
 
         <a href="/docs" target="_blank" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white bg-surface-subtle hover:bg-surface-border border border-surface-border transition">
@@ -212,9 +224,15 @@
                 <p class="text-xs text-slate-400">Describe any business proposal, project plan, technical spec, or report.</p>
               </div>
             </div>
-            <span class="text-[11px] font-mono text-slate-400 bg-surface-subtle px-2.5 py-1 rounded-md border border-surface-border">
-              Llama 3.3 70B
-            </span>
+            <div class="flex items-center space-x-2">
+              <select id="modelSelector" onchange="onModelDropdownChange()" class="text-[11px] font-mono text-slate-300 bg-surface-subtle hover:bg-surface-border px-2.5 py-1 rounded-md border border-surface-border focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+                <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Default)</option>
+                <option value="llama-3.1-70b-versatile">Llama 3.1 70B</option>
+                <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                <option value="mixtral-8x7b-32768">Mixtral 8x7B (32k)</option>
+                <option value="gemma2-9b-it">Gemma 2 9B</option>
+              </select>
+            </div>
           </div>
 
           <!-- Prompt Box -->
@@ -458,33 +476,31 @@
     </div>
   </main>
 
-  <!-- API Key Modal -->
+  <!-- Settings & Model Modal -->
   <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-surface-card border border-surface-border rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-surface-border">
         <div class="flex items-center space-x-2.5">
           <div class="p-2 bg-amber-500/10 rounded-lg text-amber-400 border border-amber-500/20">
-            <i data-lucide="key" class="w-4 h-4"></i>
+            <i data-lucide="sliders" class="w-4 h-4"></i>
           </div>
           <div>
-            <h3 class="text-sm font-semibold text-white">Groq API Key</h3>
-            <p class="text-xs text-slate-400">Powering Llama 3.3 70B inference</p>
+            <h3 class="text-sm font-semibold text-white">Groq Configuration</h3>
+            <p class="text-xs text-slate-400">API Key & Default LLM Model</p>
           </div>
         </div>
-        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1">
+        <button onclick="closeConfigModal()" class="text-slate-400 hover:text-white p-1">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
       <div class="space-y-3">
         <p class="text-xs text-slate-300 leading-relaxed">
-          Your current key has expired. Obtain a free API key at 
-          <a href="https://console.groq.com/keys" target="_blank" class="text-sky-400 underline hover:text-sky-300">console.groq.com/keys</a> 
-          and paste it below:
+          Configure your Groq API credentials and choose your preferred model:
         </p>
 
         <div class="space-y-1">
-          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">New API Key (starts with gsk_)</label>
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Groq API Key</label>
           <input 
             type="password" 
             id="groqKeyInput" 
@@ -493,13 +509,27 @@
           />
         </div>
 
+        <div class="space-y-1">
+          <label class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">LLM Model</label>
+          <select 
+            id="modalModelSelector"
+            class="w-full bg-surface-subtle border border-surface-border rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono cursor-pointer"
+          >
+            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Recommended)</option>
+            <option value="llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+            <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra Fast)</option>
+            <option value="mixtral-8x7b-32768">Mixtral 8x7B 32k Context</option>
+            <option value="gemma2-9b-it">Gemma 2 9B IT</option>
+          </select>
+        </div>
+
         <div id="apiKeyMessage" class="hidden text-xs p-2.5 rounded-lg"></div>
 
         <div class="flex items-center justify-end space-x-2 pt-2">
-          <button onclick="closeApiKeyModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
+          <button onclick="closeConfigModal()" class="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white transition">
             Cancel
           </button>
-          <button onclick="saveApiKey()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
+          <button onclick="saveConfig()" class="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition shadow-md shadow-indigo-600/30">
             Save & Apply
           </button>
         </div>
@@ -511,44 +541,73 @@
     // Initialize icons
     lucide.createIcons();
 
-    function openApiKeyModal() {
+    function openConfigModal() {
       const modal = document.getElementById('apiKeyModal');
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      loadConfigStatus();
     }
 
-    function closeApiKeyModal() {
+    function closeConfigModal() {
       const modal = document.getElementById('apiKeyModal');
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       document.getElementById('apiKeyMessage').classList.add('hidden');
     }
 
-    async function saveApiKey() {
+    async function loadConfigStatus() {
+      try {
+        const res = await fetch('/api/config-status');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.model) {
+          const m1 = document.getElementById('modelSelector');
+          const m2 = document.getElementById('modalModelSelector');
+          if (m1) m1.value = data.model;
+          if (m2) m2.value = data.model;
+        }
+      } catch (e) {}
+    }
+
+    function onModelDropdownChange() {
+      const selVal = document.getElementById('modelSelector').value;
+      const m2 = document.getElementById('modalModelSelector');
+      if (m2) m2.value = selVal;
+      fetch('/api/update-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: selVal })
+      });
+    }
+
+    async function saveConfig() {
       const key = document.getElementById('groqKeyInput').value.trim();
+      const model = document.getElementById('modalModelSelector').value;
       const msg = document.getElementById('apiKeyMessage');
-      if (!key) {
-        msg.className = "text-xs p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400";
-        msg.innerText = "Please paste a valid key starting with gsk_";
-        msg.classList.remove('hidden');
-        return;
+
+      const payload = { model };
+      if (key) {
+        payload.api_key = key;
       }
 
       try {
-        const res = await fetch('/api/update-key', {
+        const res = await fetch('/api/update-config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: key })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Failed to update key");
+        if (!res.ok) throw new Error(data.detail || "Failed to update settings");
+
+        const m1 = document.getElementById('modelSelector');
+        if (m1) m1.value = model;
 
         msg.className = "text-xs p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400";
-        msg.innerText = "API Key successfully updated! You can now generate documents.";
+        msg.innerText = "Settings updated successfully!";
         msg.classList.remove('hidden');
         setTimeout(() => {
-          closeApiKeyModal();
-        }, 1500);
+          closeConfigModal();
+        }, 1200);
       } catch (e) {
         msg.className = "text-xs p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400";
         msg.innerText = e.message;
@@ -705,10 +764,14 @@
       }, 500);
 
       try {
+        const selectedModel = document.getElementById('modelSelector')?.value;
         const response = await fetch('/agent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request: prompt })
+          body: JSON.stringify({ 
+            request: prompt,
+            model: selectedModel || undefined
+          })
         });
 
         clearInterval(timerInterval);
@@ -775,6 +838,7 @@
 
     // Initial library load
     loadDocumentLibrary();
+    loadConfigStatus();
   </script>
 </body>
 </html>

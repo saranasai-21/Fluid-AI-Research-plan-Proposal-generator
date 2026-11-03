@@ -111,7 +111,7 @@ async def run_agent(request: AgentRequest):
 
     try:
         # Initialize components with shared LLM client
-        llm = LLMClient()
+        llm = LLMClient(model=request.model)
         planner = Planner(llm_client=llm)
         executor = Executor(llm_client=llm)
         reflector = Reflector(llm_client=llm)
@@ -213,35 +213,64 @@ from pydantic import BaseModel as PydanticBase
 class ApiKeyUpdate(PydanticBase):
     api_key: str
 
-@app.get("/api/key-status", tags=["Config"])
-async def get_key_status():
-    from config import GROQ_API_KEY
+class ConfigUpdate(PydanticBase):
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+
+@app.get("/api/config-status", tags=["Config"])
+async def get_config_status():
+    from config import GROQ_API_KEY, GROQ_MODEL
     import os
     current_key = os.getenv("GROQ_API_KEY", GROQ_API_KEY)
+    current_model = os.getenv("GROQ_MODEL", GROQ_MODEL)
     is_set = bool(current_key and current_key.strip())
     masked = f"{current_key[:8]}...{current_key[-4:]}" if is_set and len(current_key) > 12 else "Not configured"
-    return {"configured": is_set, "masked_key": masked}
+    return {
+        "configured": is_set,
+        "masked_key": masked,
+        "model": current_model,
+        "available_models": [
+            {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B Versatile (Recommended)"},
+            {"id": "llama-3.1-70b-versatile", "name": "Llama 3.1 70B Versatile"},
+            {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant (Ultra Fast)"},
+            {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B (32k Context)"},
+            {"id": "gemma2-9b-it", "name": "Gemma 2 9B IT"},
+        ]
+    }
 
-@app.post("/api/update-key", tags=["Config"])
-async def update_api_key(payload: ApiKeyUpdate):
-    new_key = payload.api_key.strip()
-    if not new_key.startswith("gsk_"):
-        raise HTTPException(status_code=400, detail="Invalid Groq key format. Groq API keys start with 'gsk_'")
-    
+@app.post("/api/update-config", tags=["Config"])
+async def update_config(payload: ConfigUpdate):
     import os
-    os.environ["GROQ_API_KEY"] = new_key
-    
     env_path = Path(__file__).resolve().parent / ".env"
-    if env_path.exists():
-        content = env_path.read_text(encoding="utf-8")
-        import re
+    content = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    import re
+
+    if payload.api_key:
+        new_key = payload.api_key.strip()
+        if not new_key.startswith("gsk_"):
+            raise HTTPException(status_code=400, detail="Invalid Groq key format. Groq API keys start with 'gsk_'")
+        os.environ["GROQ_API_KEY"] = new_key
         if re.search(r"^GROQ_API_KEY=.*$", content, flags=re.MULTILINE):
             content = re.sub(r"^GROQ_API_KEY=.*$", f"GROQ_API_KEY={new_key}", content, flags=re.MULTILINE)
         else:
             content += f"\nGROQ_API_KEY={new_key}\n"
+
+    if payload.model:
+        new_model = payload.model.strip()
+        os.environ["GROQ_MODEL"] = new_model
+        if re.search(r"^GROQ_MODEL=.*$", content, flags=re.MULTILINE):
+            content = re.sub(r"^GROQ_MODEL=.*$", f"GROQ_MODEL={new_model}", content, flags=re.MULTILINE)
+        else:
+            content += f"\nGROQ_MODEL={new_model}\n"
+
+    if env_path.exists():
         env_path.write_text(content, encoding="utf-8")
     
-    return {"status": "success", "message": "API key successfully updated and saved to .env"}
+    return {"status": "success", "message": "Settings successfully updated"}
+
+@app.post("/api/update-key", tags=["Config"])
+async def update_api_key(payload: ApiKeyUpdate):
+    return await update_config(ConfigUpdate(api_key=payload.api_key))
 
 @app.get(
     "/documents/{filename}",

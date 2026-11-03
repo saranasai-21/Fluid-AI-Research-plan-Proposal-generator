@@ -43,6 +43,10 @@ class AgentRequest(BaseModel):
             "Create a project plan for developing a mobile app for a local restaurant"
         ],
     )
+    model: Optional[str] = Field(
+        default=None,
+        description="Optional Groq model to use (e.g. llama-3.3-70b-versatile, llama3-70b-8192, mixtral-8x7b-32768)"
+    )
 
 
 # ─── Internal Agent Models ───────────────────────────────────────────────────
